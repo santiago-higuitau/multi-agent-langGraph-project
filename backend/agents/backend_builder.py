@@ -26,6 +26,8 @@ STACK:
 - Config: pydantic-settings (class Settings(BaseSettings))
 - GenAI: anthropic SDK (AsyncAnthropic, ANTHROPIC_API_KEY por env var). Si no hay API key, el servicio devuelve texto placeholder en vez de crashear.
 - ML: scikit-learn TF-IDF + MultinomialNB. Modelo entrenado con datos sinteticos en ml/train.py, serializado con joblib a ml/models/classifier.joblib. ml/predict.py carga el modelo y expone classify(text). ml_service.py importa de ml/predict.py.
+- CRITICO para ml/train.py: generar minimo 50 ejemplos sinteticos por categoria usando las categorias exactas del ml_pipeline del tech spec. Los textos deben ser representativos del dominio del proyecto (no genericos). Guardar modelo en ml/models/classifier.joblib con joblib.dump().
+- CRITICO para ml/predict.py: cargar ml/models/classifier.joblib al importar el modulo (singleton). classify(text) devuelve {"category": str, "confidence": float} donde category es una de las categorias del modelo.
 
 REGLAS CRITICAS DE IMPORTS:
 - from core.config import settings
@@ -130,6 +132,7 @@ async def run_backend_builder(state: AgentState, fix_instructions: list = None) 
                 user_prompt=user_prompt,
                 temperature=0.2,
                 max_tokens=50_000,
+                agent="backend_builder",
             )
 
             if "error" in result:
@@ -197,7 +200,16 @@ def _build_file_prompt(state: AgentState, spec: dict, extra_instruction: str = "
 
     # Add ML context
     if any(k in path for k in ["ml", "classif", "predict", "train"]):
-        context_parts.append(f"ML Pipeline:\n{json.dumps(tech_spec.get('ml_pipeline', {}), indent=2, ensure_ascii=False)}")
+        ml_pipeline = tech_spec.get('ml_pipeline', {})
+        context_parts.append(f"ML Pipeline:\n{json.dumps(ml_pipeline, indent=2, ensure_ascii=False)}")
+        categories = ml_pipeline.get('categories', [])
+        if categories:
+            context_parts.append(
+                f"CATEGORIAS DEL MODELO (CRITICO — usar exactamente estas en train.py, predict.py y ml_service.py):\n{json.dumps(categories)}\n"
+                f"train.py DEBE generar datos sinteticos para CADA categoria de esta lista.\n"
+                f"predict.py DEBE devolver una de estas categorias en el campo 'category'.\n"
+                f"ml_service.py DEBE usar estas mismas categorias al interpretar la prediccion."
+            )
 
     # Add GenAI context
     if any(k in path for k in ["genai", "llm", "ai_service", "plan"]):

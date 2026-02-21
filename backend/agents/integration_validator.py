@@ -85,6 +85,7 @@ async def run_integration_validator(state: AgentState) -> dict:
             user_prompt=user_prompt,
             temperature=0.1,
             max_tokens=50_000,
+            agent="integration_validator",
         )
 
         if "error" in result:

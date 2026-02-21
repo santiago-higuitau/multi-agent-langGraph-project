@@ -155,6 +155,7 @@ async def run_qa_agent(state: AgentState) -> dict:
                 user_prompt=user_prompt,
                 temperature=0.2,
                 max_tokens=50_000,
+                agent="qa_agent",
             )
 
             if "error" in result:
@@ -163,8 +164,6 @@ async def run_qa_agent(state: AgentState) -> dict:
                 continue
 
             content = result.get("content", "")
-            if not content:
-                content = str(result)
 
             raw_tcs = result.get("test_cases", [])
             for tc in raw_tcs:

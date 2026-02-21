@@ -40,45 +40,43 @@ def get_workflow():
 def _derive_run_status(run_id: str, state_values: dict, next_nodes: tuple) -> dict:
     """
     Derive the real status/phase from LangGraph's interrupt state.
-    
-    Because we use interrupt_before on HITL gates, the gate node never runs,
-    so state.status stays 'running'. We detect the interrupt by checking next_nodes.
     """
     status = state_values.get("status", "unknown")
     current_phase = state_values.get("current_phase", "unknown")
     current_agent = state_values.get("current_agent", "")
 
-    # If pipeline is interrupted before a HITL gate, override status
-    # BUT if there's an active background task, the gate was already approved
-    # and the pipeline just hasn't advanced past it yet — report "running"
     has_active_task = run_id in _running_tasks and not _running_tasks[run_id].done()
+    # If HITL was approved, use the stored phase until LangGraph advances past the gate
+    approved_phase = runs_store.get(run_id, {}).get("approved_phase")
 
     if "hitl_gate_1" in next_nodes:
-        if has_active_task:
+        if has_active_task or approved_phase == "building":
             status = "running"
             current_phase = "building"
-            current_agent = "hitl_gate_1"
+            current_agent = state_values.get("current_agent", "backend_builder")
         else:
             status = "waiting_hitl"
             current_phase = "hitl_gate_1"
             current_agent = "hitl_gate_1"
     elif "hitl_gate_2" in next_nodes:
-        if has_active_task:
+        if has_active_task or approved_phase == "devops":
             status = "running"
             current_phase = "devops"
-            current_agent = "hitl_gate_2"
+            current_agent = state_values.get("current_agent", "devops_agent")
         else:
             status = "waiting_hitl"
             current_phase = "hitl_gate_2"
             current_agent = "hitl_gate_2"
     elif not next_nodes and status == "running":
-        # No next nodes = pipeline finished
         status = "completed"
         current_phase = "done"
         current_agent = ""
+        if run_id in runs_store:
+            runs_store[run_id].pop("approved_phase", None)
     elif has_active_task:
-        # Background task still running
         status = "running"
+        if run_id in runs_store:
+            runs_store[run_id].pop("approved_phase", None)
 
     return {
         "status": status,
@@ -400,6 +398,8 @@ async def submit_hitl_decision(run_id: str, decision: HITLDecision):
             "hitl_gate1_status": decision.decision,
             "hitl_gate1_feedback": decision.feedback or "",
             "status": "running",
+            "current_phase": "building",
+            "next_agent": "backend_builder",
             "planning_feedback": decision.feedback or "",
         }
         if decision.decision in ("rejected", "changes_requested"):
@@ -410,10 +410,16 @@ async def submit_hitl_decision(run_id: str, decision: HITLDecision):
             "hitl_gate2_status": decision.decision,
             "hitl_gate2_feedback": decision.feedback or "",
             "status": "running",
+            "current_phase": "devops",
+            "next_agent": "devops_agent",
         }
 
     # Update state
     app.update_state(config, state_update)
+
+    # Store approved phase so polls see it immediately (before LangGraph advances)
+    approved_phase = "building" if at_gate_1 else "devops"
+    runs_store[run_id]["approved_phase"] = approved_phase
 
     print(f"\n🚦 HITL Decision: {decision.decision}")
     if decision.feedback:

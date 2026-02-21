@@ -265,6 +265,7 @@ async def hitl_gate1_node(state: AgentState) -> dict:
         "status": "waiting_hitl",
         "current_phase": "hitl_gate_1",
         "current_agent": "hitl_gate_1",
+        "next_agent": "",
         "decisions_log": [decision],
         "activity_log": [activity("HITL Gate 1", "🚦", "Esperando aprobación humana", f"{len(state['requirements'])} reqs, {len(state['user_stories'])} US listos para revisión")],
     }
@@ -287,6 +288,7 @@ async def hitl_gate2_node(state: AgentState) -> dict:
         "status": "waiting_hitl",
         "current_phase": "hitl_gate_2",
         "current_agent": "hitl_gate_2",
+        "next_agent": "",
         "decisions_log": [decision],
         "activity_log": [activity("HITL Gate 2", "🚦", "Esperando aprobación humana", f"{len(state['generated_files'])} archivos, {len(state['test_cases'])} tests listos para revisión")],
     }
@@ -323,6 +325,8 @@ async def backend_builder_node(state: AgentState) -> dict:
 
     return {
         "generated_files": files,
+        "current_agent": "backend_builder",
+        "next_agent": "frontend_builder",
         "decisions_log": [decision],
         "activity_log": activities,
     }
@@ -354,6 +358,8 @@ async def frontend_builder_node(state: AgentState) -> dict:
 
     return {
         "generated_files": files,
+        "current_agent": "frontend_builder",
+        "next_agent": "qa_agent",
         "decisions_log": [decision],
         "activity_log": activities,
     }

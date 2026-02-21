@@ -82,6 +82,7 @@ async def evaluate_planning(state: AgentState) -> dict:
         user_prompt=_build_user_prompt(state),
         temperature=0.1,
         max_tokens=50_000,
+        agent="planning_evaluator",
     )
 
     if "error" in result:

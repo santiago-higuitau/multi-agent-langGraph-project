@@ -130,6 +130,7 @@ async def run_frontend_builder(state: AgentState, fix_instructions: list = None)
                 user_prompt=user_prompt,
                 temperature=0.2,
                 max_tokens=50_000,
+                agent="frontend_builder",
             )
 
             if "error" in result:

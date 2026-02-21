@@ -74,7 +74,13 @@ REGLAS DE IMPORTS BACKEND (CRITICO):
 - from services.genai_service import generate_{accion}  (genai_service tiene fallback si no hay API key)
 - NUNCA: from app.xxx, from backend.xxx (no son paquetes Python)
 
-GENERA la tech spec completa en JSON. Para CADA archivo incluye:
+REGLAS CRITICAS PARA MERMAID (sintaxis estricta):
+- erDiagram: tipos de atributos SOLO: int, string, float, boolean, datetime. NUNCA usar "FK", "UK", "PK" como tipo — van como sufijo separado: "int id PK", "int user_id FK". Un atributo por linea. Sin comas.
+- sequenceDiagram: usar actor para usuarios, participant para servicios. Flechas: ->>, -->>, -x. Sin parentesis en labels.
+- NO incluir caracteres especiales, acentos ni espacios en nombres de entidades/participantes.
+- Cada diagrama debe ser valido para mermaid v10.
+
+ Para CADA archivo incluye:
 - path: ruta relativa desde la raiz del proyecto
 - description: que hace
 - instruction: instruccion DETALLADA para el builder (que clases, funciones, imports, logica)
@@ -99,8 +105,8 @@ RESPONDE UNICAMENTE con JSON valido (sin markdown):
     "db_schema": "CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, ...);",
     "ml_pipeline": {"type": "tfidf_naive_bayes", "library": "scikit-learn", "serialization": "joblib", "model_path": "ml/models/classifier.joblib", "train_script": "ml/train.py", "predict_module": "ml/predict.py", "input": "texto libre", "output": "categoria + confianza (0-1)", "categories": ["cat1", "cat2", "cat3"], "training_data": "sintetico (generado en train.py, 50-100 ejemplos por categoria)", "description": "..."},
     "genai_integration": {"provider": "anthropic", "model": "claude-sonnet-4-20250514", "fallback_if_no_key": true, "use_cases": [{"name": "...", "prompt_template": "...", "input": "...", "output": "..."}]},
-    "mermaid_er": "erDiagram\\n    USER ||--o{ INCIDENT : creates\\n    ...",
-    "mermaid_sequence": [{"title": "Flujo principal", "code": "sequenceDiagram\\n    ..."}],
+    "mermaid_er": "erDiagram\\n    USER ||--o{ INCIDENT : creates\\n    USER { int id PK\\n string email\\n string hashed_password }\\n    INCIDENT { int id PK\\n string title\\n int user_id FK }",
+    "mermaid_sequence": [{"title": "Flujo principal", "code": "sequenceDiagram\\n    actor User\\n    User->>Frontend: accion\\n    Frontend->>Backend: POST /api/recurso\\n    Backend-->>Frontend: 200 OK"}],
     "stack": {"backend": "FastAPI+SQLAlchemy+Python3.11", "frontend": "React18+Vite+TailwindCSS", "db": "SQLite", "ml": "scikit-learn TF-IDF+NaiveBayes (joblib)", "genai": "Anthropic Claude (con fallback)"}
   },
   "feasibility": "approved",
@@ -199,6 +205,7 @@ async def run_architect_agent(state: AgentState) -> dict:
         user_prompt=_build_tech_spec_prompt(state),
         temperature=0.2,
         max_tokens=50_000,
+        agent="architect_agent",
     )
 
     if isinstance(result, list):
@@ -237,6 +244,7 @@ async def run_architect_agent(state: AgentState) -> dict:
         user_prompt=_build_builder_spec_prompt(raw_spec, state),
         temperature=0.2,
         max_tokens=50_000,
+        agent="architect_agent",
     )
 
     if isinstance(builder_result, list):

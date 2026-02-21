@@ -136,6 +136,7 @@ async def run_devops_agent(state: AgentState) -> dict:
                 user_prompt=user_prompt,
                 temperature=0.1,
                 max_tokens=50_000,
+                agent="devops_agent",
             )
 
             if "error" in result:

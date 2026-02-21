@@ -91,6 +91,7 @@ async def run_ba_agent(state: AgentState) -> dict:
         user_prompt=_build_user_prompt(state),
         temperature=0.3,
         max_tokens=50_000,
+        agent="ba_agent",
     )
 
     if "error" in result:

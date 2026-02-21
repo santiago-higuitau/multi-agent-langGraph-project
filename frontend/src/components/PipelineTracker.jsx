@@ -62,6 +62,11 @@ export default function PipelineTracker({ run, activityLog = [] }) {
           if (isCurrent && realActiveAgent && AGENT_PHASE[realActiveAgent] === phase.key && !agentsToShow[realActiveAgent]) {
             agentsToShow[realActiveAgent] = { message: 'Trabajando...', icon: '⚙️' }
           }
+          // En building, mostrar ambos builders desde el inicio (corren en paralelo)
+          if (isCurrent && phase.key === 'building' && run.status === 'running') {
+            if (!agentsToShow['Backend Builder']) agentsToShow['Backend Builder'] = { message: 'Trabajando...', icon: '⚙️' }
+            if (!agentsToShow['Frontend Builder']) agentsToShow['Frontend Builder'] = { message: 'Trabajando...', icon: '⚙️' }
+          }
           const agentEntries = Object.entries(agentsToShow)
 
           return (
@@ -112,7 +117,9 @@ export default function PipelineTracker({ run, activityLog = [] }) {
                   <div className="mt-2 space-y-1.5">
                     {agentEntries.map(([agent, entry]) => {
                       const finished = entry.icon === '✅'
-                      const isActive = !finished && realActiveAgent === agent
+                      // En building, backend y frontend corren en paralelo — ambos tienen spinner si no terminaron
+                      const isParallelPhase = phase.key === 'building' && (agent === 'Backend Builder' || agent === 'Frontend Builder')
+                      const isActive = !finished && (isParallelPhase || realActiveAgent === agent)
                       return (
                         <div key={agent} className="flex items-center gap-2 bg-white border border-[#E5E7EB] rounded-[8px] px-3 py-2 shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
                           {isActive

@@ -11,7 +11,7 @@ de despliegue — todo automatizado con revisión humana en dos puntos clave.
 
 - **Backend (orquestador):** Python 3.11+ · FastAPI · LangGraph · Anthropic SDK
 - **Frontend (panel de control):** React 18 · Vite · TailwindCSS
-- **LLM:** Anthropic Claude (default) — también soporta OpenAI, Groq, Kimi
+- **LLM:** Multi-proveedor — Anthropic, OpenAI, Groq, Gemini, Kimi, Mistral
 
 ## Requisitos previos
 
@@ -119,9 +119,41 @@ Abre http://localhost:5173 en tu navegador.
 
 ## Configuración LLM
 
-El sistema soporta múltiples providers. Edita `.env`:
+Cada agente usa su propio modelo, configurable por variable de entorno. El formato es `provider/model-id`.
 
-- **Anthropic** (recomendado): `claude-haiku-4-5-20251001` para velocidad, `claude-sonnet-4-20250514` para calidad
-- **Groq** (gratis): `llama-3.3-70b-versatile` — rápido pero menor calidad en JSON
-- **OpenAI**: `gpt-4o`
-- **Kimi**: `moonshot-v1-8k`
+### Variables de entorno
+
+```bash
+# Fallback para agentes sin override explícito
+DEFAULT_MODEL=anthropic/claude-sonnet-4-6
+
+# API keys — solo las del provider que uses
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+GROQ_API_KEY=gsk_...
+GEMINI_API_KEY=...
+
+# Modelo por agente (opcional — si no se define, usa DEFAULT_MODEL)
+MODEL_BA=anthropic/claude-sonnet-4-6
+MODEL_PO=anthropic/claude-sonnet-4-6
+MODEL_ARCHITECT=anthropic/claude-opus-4-6
+MODEL_BACKEND=anthropic/claude-sonnet-4-6
+MODEL_FRONTEND=anthropic/claude-sonnet-4-6
+MODEL_QA=anthropic/claude-haiku-4-5-20251001
+MODEL_VALIDATOR=anthropic/claude-opus-4-6
+MODEL_DEVOPS=anthropic/claude-haiku-4-5-20251001
+MODEL_EVALUATOR=anthropic/claude-sonnet-4-6
+```
+
+### Providers soportados
+
+| Provider | Formato | API Key |
+|----------|---------|---------|
+| Anthropic | `anthropic/claude-sonnet-4-6` | `ANTHROPIC_API_KEY` |
+| OpenAI | `openai/gpt-4o` | `OPENAI_API_KEY` |
+| Groq | `groq/llama-3.3-70b-versatile` | `GROQ_API_KEY` |
+| Gemini | `gemini/gemini-1.5-pro` | `GEMINI_API_KEY` |
+| Kimi | `kimi/moonshot-v1-8k` | `KIMI_API_KEY` |
+| Mistral | `mistral/mistral-large-latest` | `MISTRAL_API_KEY` |
+
+Puedes mezclar proveedores libremente — por ejemplo, Anthropic Opus para el Arquitecto y Groq para los builders.
