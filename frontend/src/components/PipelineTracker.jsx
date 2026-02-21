@@ -1,4 +1,4 @@
-const PHASES = [
+﻿const PHASES = [
   { key: 'planning', label: 'Planificación', icon: '🔍', agents: ['BA → PO → Architect → Evaluator'] },
   { key: 'hitl_gate_1', label: 'Gate 1 — Revisión', icon: '🚦', agents: ['Aprobación humana de planificación'] },
   { key: 'building', label: 'Construcción', icon: '⚙️', agents: ['Backend ∥ Frontend → QA'] },
@@ -13,18 +13,33 @@ const AGENT_PHASE = {
   'QA Agent': 'building', 'Integration Validator': 'integration', 'HITL Gate 2': 'hitl_gate_2',
   'DevOps Agent': 'devops', 'Pipeline': 'done',
 }
+const CURRENT_AGENT_MAP = {
+  'ba_agent': 'BA Agent', 'po_agent': 'PO Agent', 'architect_agent': 'Architect',
+  'planning_evaluator': 'Evaluator', 'hitl_gate_1': 'HITL Gate 1',
+  'backend_builder': 'Backend Builder', 'frontend_builder': 'Frontend Builder',
+  'qa_agent': 'QA Agent', 'integration_validator': 'Integration Validator',
+  'hitl_gate_2': 'HITL Gate 2', 'devops_agent': 'DevOps Agent',
+}
 const AGENT_COLORS = {
   'BA Agent': 'text-blue-600', 'PO Agent': 'text-purple-600', 'Architect': 'text-cyan-600',
   'Evaluator': 'text-amber-600', 'Backend Builder': 'text-[#059669]', 'Frontend Builder': 'text-pink-600',
   'QA Agent': 'text-orange-600', 'Integration Validator': 'text-red-600', 'DevOps Agent': 'text-teal-600',
 }
-function phaseIndex(phase) { const idx = PHASES.findIndex((p) => p.key === phase); return idx === -1 ? 0 : idx }
+function phaseIndex(phase) {
+  const idx = PHASES.findIndex((p) => p.key === phase)
+  return idx === -1 ? 0 : idx
+}
 
 export default function PipelineTracker({ run, activityLog = [] }) {
   const current = phaseIndex(run.current_phase)
   const latestByAgent = {}
   for (const entry of activityLog) latestByAgent[entry.agent] = entry
   const lastActivity = activityLog.length > 0 ? activityLog[activityLog.length - 1] : null
+  const activeAgentName = CURRENT_AGENT_MAP[run.current_agent] || run.current_agent
+  const nextAgentName = CURRENT_AGENT_MAP[run.next_agent] || run.next_agent
+  // next_agent = quien viene después (seteado por el nodo anterior al terminar)
+  // Tiene spinner el next_agent si existe, si no el current_agent
+  const realActiveAgent = nextAgentName || activeAgentName
 
   return (
     <div className="space-y-6">
@@ -41,6 +56,14 @@ export default function PipelineTracker({ run, activityLog = [] }) {
           const isCurrent = i === current
           const isPending = i > current
           const phaseAgents = Object.entries(latestByAgent).filter(([agent]) => AGENT_PHASE[agent] === phase.key)
+
+          // Agentes a mostrar: los que ya tienen log + el activo aunque no tenga log aún
+          const agentsToShow = { ...Object.fromEntries(phaseAgents) }
+          if (isCurrent && realActiveAgent && AGENT_PHASE[realActiveAgent] === phase.key && !agentsToShow[realActiveAgent]) {
+            agentsToShow[realActiveAgent] = { message: 'Trabajando...', icon: '⚙️' }
+          }
+          const agentEntries = Object.entries(agentsToShow)
+
           return (
             <div key={phase.key} className="flex gap-4 relative">
               {i < PHASES.length - 1 && (
@@ -48,22 +71,32 @@ export default function PipelineTracker({ run, activityLog = [] }) {
               )}
               <div className="flex-shrink-0 relative z-10">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 ${
-                  isDone ? 'border-[#A7F3D0] bg-[#ECFDF5]' : isCurrent ? 'border-[#059669] bg-[#ECFDF5] shadow-lg shadow-[rgba(5,150,105,0.2)]' : 'border-[#E5E7EB] bg-white'
+                  isDone ? 'border-[#A7F3D0] bg-[#ECFDF5]' :
+                  isCurrent ? 'border-[#059669] bg-[#ECFDF5] shadow-lg shadow-[rgba(5,150,105,0.2)]' :
+                  'border-[#E5E7EB] bg-white'
                 }`}>
                   {isDone ? <span className="text-[#059669] text-xs">✓</span> : <span className="text-xs">{phase.icon}</span>}
                 </div>
               </div>
               <div className={`flex-1 pb-6 ${isPending ? 'opacity-40' : ''}`}>
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm font-medium ${isCurrent ? 'text-[#111827]' : isDone ? 'text-[#374151]' : 'text-[#9CA3AF]'}`}>{phase.label}</span>
-                  {isCurrent && run.status === 'waiting_hitl' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600">esperando</span>}
+                  <span className={`text-sm font-medium ${isCurrent ? 'text-[#111827]' : isDone ? 'text-[#374151]' : 'text-[#9CA3AF]'}`}>
+                    {phase.label}
+                  </span>
+                  {isCurrent && run.status === 'waiting_hitl' && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600">esperando</span>
+                  )}
                   {isCurrent && run.status === 'running' && (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-600 flex items-center gap-1">
                       <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />en progreso
                     </span>
                   )}
                 </div>
-                {phase.agents.length > 0 && <p className="text-xs text-[#4B5563] mt-0.5">{phase.agents.join(' → ')}</p>}
+                {phase.agents.length > 0 && (
+                  <p className="text-xs text-[#4B5563] mt-0.5">{phase.agents.join(' → ')}</p>
+                )}
+
+                {/* Fase completada: badges de agentes */}
                 {isDone && phaseAgents.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {phaseAgents.map(([agent, entry]) => (
@@ -73,15 +106,24 @@ export default function PipelineTracker({ run, activityLog = [] }) {
                     ))}
                   </div>
                 )}
-                {isCurrent && run.status === 'running' && phaseAgents.length > 0 && (
+
+                {/* Fase actual: spinner para activo, check para terminados */}
+                {isCurrent && run.status === 'running' && agentEntries.length > 0 && (
                   <div className="mt-2 space-y-1.5">
-                    {phaseAgents.map(([agent, entry]) => (
-                      <div key={agent} className="flex items-center gap-2 bg-white border border-[#E5E7EB] rounded-[8px] px-3 py-2 shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-                        <span className="w-3 h-3 border-2 border-[#059669] border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                        <span className={`text-[11px] font-medium ${AGENT_COLORS[agent] || 'text-[#374151]'}`}>{agent}</span>
-                        <span className="text-[10px] text-[#4B5563] truncate">{entry.message}</span>
-                      </div>
-                    ))}
+                    {agentEntries.map(([agent, entry]) => {
+                      const finished = entry.icon === '✅'
+                      const isActive = !finished && realActiveAgent === agent
+                      return (
+                        <div key={agent} className="flex items-center gap-2 bg-white border border-[#E5E7EB] rounded-[8px] px-3 py-2 shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+                          {isActive
+                            ? <span className="w-3 h-3 border-2 border-[#059669] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                            : <span className="w-3 h-3 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] flex items-center justify-center flex-shrink-0 text-[8px] text-[#059669]">✓</span>
+                          }
+                          <span className={`text-[11px] font-medium ${AGENT_COLORS[agent] || 'text-[#374151]'}`}>{agent}</span>
+                          <span className="text-[10px] text-[#4B5563] truncate">{entry.message}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -90,17 +132,23 @@ export default function PipelineTracker({ run, activityLog = [] }) {
         })}
       </div>
 
-      {lastActivity && run.status === 'running' && (
+      {run.status === 'running' && (
         <div className="bg-white border border-[#E5E7EB] rounded-[14px] p-4 flex items-center gap-3 shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
           <div className="w-5 h-5 border-2 border-[#059669] border-t-transparent rounded-full animate-spin flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className={`text-xs font-medium ${AGENT_COLORS[lastActivity.agent] || 'text-[#374151]'}`}>{lastActivity.agent}</span>
-              <span className="text-[10px] text-[#4B5563] font-mono">{lastActivity.timestamp?.slice(11, 19)}</span>
+              <span className={`text-xs font-medium ${AGENT_COLORS[realActiveAgent] || 'text-[#374151]'}`}>{realActiveAgent}</span>
+              {latestByAgent[realActiveAgent] && (
+                <span className="text-[10px] text-[#4B5563] font-mono">{latestByAgent[realActiveAgent].timestamp?.slice(11, 19)}</span>
+              )}
             </div>
-            <p className="text-xs text-[#374151] truncate">{lastActivity.message}</p>
+            <p className="text-xs text-[#374151] truncate">
+              {latestByAgent[realActiveAgent]?.message || 'Trabajando...'}
+            </p>
           </div>
-          {run.planning_iteration > 0 && <span className="text-xs text-[#4B5563] flex-shrink-0">iteración {run.planning_iteration}</span>}
+          {run.planning_iteration > 0 && (
+            <span className="text-xs text-[#4B5563] flex-shrink-0">iteración {run.planning_iteration}</span>
+          )}
         </div>
       )}
     </div>

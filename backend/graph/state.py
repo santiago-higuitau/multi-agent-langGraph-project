@@ -138,6 +138,7 @@ class AgentState(TypedDict):
     brief: str
     current_phase: Annotated[str, last_non_empty_str]
     current_agent: Annotated[str, last_non_empty_str]
+    next_agent: Annotated[str, last_non_empty_str]
     status: Annotated[str, last_non_empty_str]
     
     # Phase 1: Planning (iterative cycle)
@@ -201,6 +202,7 @@ def create_initial_state(run_id: str, brief: str) -> AgentState:
         brief=brief,
         current_phase="planning",
         current_agent="",
+        next_agent="ba_agent",
         status="running",
         
         requirements=[],

@@ -106,6 +106,7 @@ async def ba_node(state: AgentState) -> dict:
     return {
         "requirements": reqs,
         "current_agent": "ba_agent",
+        "next_agent": "po_agent",
         "decisions_log": [decision],
         "activity_log": activities,
     }
@@ -145,6 +146,7 @@ async def po_node(state: AgentState) -> dict:
         "inception": inception,
         "user_stories": stories,
         "current_agent": "po_agent",
+        "next_agent": "architect_agent",
         "decisions_log": [decision],
         "activity_log": activities,
     }
@@ -195,6 +197,7 @@ async def architect_node(state: AgentState) -> dict:
         "er_diagram_svg": result.get("er_diagram_svg", ""),
         "sequence_diagrams_svg": result.get("sequence_diagrams_svg", []),
         "current_agent": "architect_agent",
+        "next_agent": "planning_evaluator",
         "decisions_log": [decision],
         "activity_log": activities,
     }

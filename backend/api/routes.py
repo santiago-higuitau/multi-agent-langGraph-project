@@ -236,6 +236,7 @@ async def get_run(run_id: str):
         "deployment_ready": state_values.get("deployment_ready", False),
         "brief": state_values.get("brief", ""),
         "next_steps": current_state.next,
+        "next_agent": state_values.get("next_agent", ""),
     }
 
 
